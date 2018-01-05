@@ -182,7 +182,7 @@ func (s *Server) ListenServeAndSignal(signal chan error) error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			for c := range s.conns {
-				c.Close()
+				c.conn.Close()
 			}
 			s.conns = nil
 		}()
