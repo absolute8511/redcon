@@ -747,6 +747,19 @@ func (rd *Reader) readCommands(leftover *int) ([]Command, error) {
 	return rd.readCommands(leftover)
 }
 
+func (rd *Reader) ReadCommands() ([]Command, error) {
+	if len(rd.cmds) > 0 {
+		cmds := rd.cmds[:]
+		rd.cmds = rd.cmds[:0]
+		return cmds, nil
+	}
+	if cmds, err := rd.readCommands(nil); err != nil {
+		return nil, err
+	} else {
+		return cmds, nil
+	}
+}
+
 // ReadCommand reads the next command.
 func (rd *Reader) ReadCommand() (Command, error) {
 	if len(rd.cmds) > 0 {
