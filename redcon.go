@@ -537,6 +537,15 @@ func parseInt(b []byte) (int, error) {
 	return int(n), err
 }
 
+func (rd *Reader) Reset(r io.Reader) {
+	rd.rd.Reset(r)
+	rd.start = 0
+	rd.end = 0
+	if rd.cmds != nil {
+		rd.cmds = rd.cmds[:0]
+	}
+}
+
 func (rd *Reader) readCommands(leftover *int) ([]Command, error) {
 	var cmds []Command
 	b := rd.buf[rd.start:rd.end]
