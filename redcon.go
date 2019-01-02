@@ -8,6 +8,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 )
 
 var (
@@ -197,6 +198,10 @@ func (s *Server) ListenServeAndSignal(signal chan error) error {
 				return nil
 			}
 			return err
+		}
+		if tc, ok := lnconn.(*net.TCPConn); ok {
+			tc.SetKeepAlive(true)
+			tc.SetKeepAlivePeriod(10 * time.Minute)
 		}
 		c := &conn{conn: lnconn, addr: lnconn.RemoteAddr().String(),
 			wr: NewWriter(lnconn), rd: NewReader(lnconn)}
