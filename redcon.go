@@ -436,6 +436,10 @@ func (w *Writer) WriteArray(count int) {
 
 // WriteBulk writes bulk bytes to the client.
 func (w *Writer) WriteBulk(bulk []byte) {
+	if bulk == nil {
+		w.WriteNull()
+		return
+	}
 	w.b = append(w.b, '$')
 	w.b = strconv.AppendInt(w.b, int64(len(bulk)), 10)
 	w.b = append(w.b, '\r', '\n')
