@@ -208,6 +208,7 @@ func (s *Server) ListenServeAndSignal(signal chan error) error {
 		c := &conn{conn: lnconn, addr: lnconn.RemoteAddr().String(),
 			wr: NewWriter(lnconn), rd: NewReader(lnconn)}
 		s.mu.Lock()
+		c.idleClose = s.idleClose
 		s.conns[c] = true
 		s.mu.Unlock()
 		if s.accept != nil && !s.accept(c) {
@@ -247,6 +248,9 @@ func handle(s *Server, c *conn) {
 		// read commands and feed back to the client
 		for {
 			// read pipeline commands
+			if c.idleClose != 0 {
+				c.conn.SetReadDeadline(time.Now().Add(c.idleClose))
+			}
 			cmds, err := c.rd.readCommands(nil)
 			if err != nil {
 				if err, ok := err.(*errProtocol); ok {
@@ -283,14 +287,15 @@ func handle(s *Server, c *conn) {
 
 // conn represents a client connection
 type conn struct {
-	conn     net.Conn
-	wr       *Writer
-	rd       *Reader
-	addr     string
-	ctx      interface{}
-	detached bool
-	closed   bool
-	cmds     []Command
+	conn      net.Conn
+	wr        *Writer
+	rd        *Reader
+	addr      string
+	ctx       interface{}
+	detached  bool
+	closed    bool
+	cmds      []Command
+	idleClose time.Duration
 }
 
 func (c *conn) Close() error {
@@ -388,15 +393,16 @@ type Command struct {
 
 // Server defines a server for clients for managing client connections.
 type Server struct {
-	mu      sync.Mutex
-	net     string
-	laddr   string
-	handler func(conn Conn, cmd Command)
-	accept  func(conn Conn) bool
-	closed  func(conn Conn, err error)
-	conns   map[*conn]bool
-	ln      net.Listener
-	done    bool
+	mu        sync.Mutex
+	net       string
+	laddr     string
+	handler   func(conn Conn, cmd Command)
+	accept    func(conn Conn) bool
+	closed    func(conn Conn, err error)
+	conns     map[*conn]bool
+	ln        net.Listener
+	done      bool
+	idleClose time.Duration
 }
 
 // Writer allows for writing RESP messages.
@@ -809,4 +815,12 @@ func Parse(raw []byte) (Command, error) {
 	}
 	return cmds[0], nil
 
+}
+
+// SetIdleClose will automatically close idle connections after the specified
+// duration. Use zero to disable this feature.
+func (s *Server) SetIdleClose(dur time.Duration) {
+	s.mu.Lock()
+	s.idleClose = dur
+	s.mu.Unlock()
 }
