@@ -3,6 +3,7 @@ package redcon
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -166,7 +167,9 @@ func ListenAndServeNetwork(
 // ListenServeAndSignal serves incoming connections and passes nil or error
 // when listening. signal can be nil.
 func (s *Server) ListenServeAndSignal(signal chan error) error {
-	ln, err := net.Listen(s.net, s.laddr)
+	var lc net.ListenConfig
+	lc.KeepAlive = 10 * time.Second
+	ln, err := lc.Listen(context.Background(), s.net, s.laddr)
 	if err != nil {
 		if signal != nil {
 			signal <- err
@@ -200,10 +203,6 @@ func (s *Server) ListenServeAndSignal(signal chan error) error {
 				return nil
 			}
 			return err
-		}
-		if tc, ok := lnconn.(*net.TCPConn); ok {
-			tc.SetKeepAlive(true)
-			tc.SetKeepAlivePeriod(10 * time.Minute)
 		}
 		c := &conn{conn: lnconn, addr: lnconn.RemoteAddr().String(),
 			wr: NewWriter(lnconn), rd: NewReader(lnconn)}
